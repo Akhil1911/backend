@@ -10,7 +10,12 @@ dotenv.config();
 //middlewares
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+//importing routes
+import userRoutes from "./routes/user.routes.js";
+//implementing routes
+app.use("/api/v1/users", userRoutes);
 //connecting database and listening
 connectDB()
   .then(() => {

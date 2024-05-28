@@ -1,6 +1,4 @@
 import mongoose, { Schema } from "mongoose";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { hashPassword, comparePassword } from "../helpers/password.helper.js";
 import {
   generateAccessToken,
@@ -19,6 +17,7 @@ const userSchema = new Schema(
     email: {
       type: String,
       required: [true, "Please fill all fields"],
+      match: /^([a-zA-Z0-9]{6,})@[a-zA-Z]{3,}\.[a-z]{2,10}$/,
       trim: true,
       unique: true,
       lowercase: true,
