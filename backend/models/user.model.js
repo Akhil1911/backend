@@ -1,9 +1,6 @@
 import mongoose, { Schema } from "mongoose";
-import { hashPassword, comparePassword } from "../helpers/password.helper.js";
-import {
-  generateAccessToken,
-  generateRefreshToken,
-} from "../helpers/token.helper.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 const userSchema = new Schema(
   {
     username: {
@@ -40,22 +37,34 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-userSchema.pre("save", function (next) {
+userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  this.password = hashPassword(this.password);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-userSchema.method.isPasswordCorrect = function (password) {
-  return comparePassword(password, this.password);
+userSchema.method.isPasswordCorrect = async function (password) {
+  return await bcrypt.compare(password, this.password);
 };
 
 userSchema.method.generateAccessToken = function () {
-  return generateAccessToken(this);
+  return jwt.sign(
+    {
+      _id: this._id,
+      email: this.email,
+      username: this.username,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+    }
+  );
 };
 
 userSchema.method.generateRefreshToken = function () {
-  return generateRefreshToken(this._id);
+  return jwt.sign({ _id: this._id }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+  });
 };
 
 export const User = mongoose.model("User", userSchema);
