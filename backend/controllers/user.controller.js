@@ -64,9 +64,13 @@ const userRegister = async (req, res) => {
       username: username.toLowerCase(),
       avatar: avatar?.url,
       coverImage: coverImage?.url || "",
+      refreshToken: "check",
     });
 
-    const createdUser = await User.findById(user._id);
+    const createdUser = await User.findOne(
+      { _id: user._id },
+      { password: 0, refreshToken: 0 }
+    );
 
     if (!createdUser) {
       return res
