@@ -1,5 +1,23 @@
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    user.save({ validateBeforeSave: false });
+    return { accessToken, refreshToken };
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error In Generating Token",
+    });
+  }
+};
+
 const userRegister = async (req, res) => {
   try {
     const { username, email, password, fullName } = req.body;
@@ -18,8 +36,6 @@ const userRegister = async (req, res) => {
 
     const userExist = await User.findOne({ $or: [{ username }, { email }] });
     if (userExist) {
-      console.log(userExist.username, username);
-      console.log(userExist.email, email);
       return res.status(409).json({
         success: false,
         message:
@@ -64,7 +80,6 @@ const userRegister = async (req, res) => {
       username: username.toLowerCase(),
       avatar: avatar?.url,
       coverImage: coverImage?.url || "",
-      refreshToken: "check",
     });
 
     const createdUser = await User.findOne(
@@ -81,7 +96,7 @@ const userRegister = async (req, res) => {
     return res.status(201).json({
       user: createdUser,
       success: true,
-      message: "User Registered Successfully",
+      message: "Registered Successfully",
     });
   } catch (error) {
     res.status((error.code < 500 && error.code) || 500).json({
@@ -91,4 +106,71 @@ const userRegister = async (req, res) => {
   }
 };
 
-export { userRegister };
+const userLogin = async (req, res) => {
+  try {
+    const { email, username, password } = req.body;
+    if (!username && !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email or Username is Required",
+      });
+    }
+
+    if (password === "" || password === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is Required",
+      });
+    }
+
+    const user = await User.findOne({ $or: [{ username }, { email }] });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No Such User Found, Please Register",
+      });
+    }
+
+    const isPasswordCorrect = await user.isPasswordCorrect(password);
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Credentials",
+      });
+    }
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+
+    const loggedInUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json({
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+        success: true,
+        message: "Login Successful",
+      });
+  } catch (error) {
+    res.status((error.code < 500 && error.code) || 500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
+export { userRegister, userLogin };
