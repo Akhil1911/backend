@@ -8,7 +8,7 @@ const verifyJWT = async (req, res, next) => {
       req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: "Unauthorized Request",
       });
@@ -21,7 +21,7 @@ const verifyJWT = async (req, res, next) => {
     );
 
     if (!user) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: "Invalid Access Token",
       });
@@ -30,7 +30,7 @@ const verifyJWT = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error in verifying token",
     });
