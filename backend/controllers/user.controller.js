@@ -173,4 +173,33 @@ const userLogin = async (req, res) => {
   }
 };
 
-export { userRegister, userLogin };
+const userLogout = async (req, res) => {
+  try {
+    User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { refreshToken: undefined } },
+      { new: true }
+    );
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    res
+      .status(200)
+      .clearCookie("accessToken", options)
+      .clearCookie("refreshToken", options)
+      .json({
+        success: true,
+        message: "Logout Successful",
+      });
+  } catch (error) {
+    res.status((error.code < 500 && error.code) || 500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
+export { userRegister, userLogin, userLogout };
